@@ -1,52 +1,218 @@
 {
   "version": 2,
   "runs": {
-    "96861b0f-36f0-4059-bf76-56a9c6c780e6": {
-      "runId": "96861b0f-36f0-4059-bf76-56a9c6c780e6",
-      "childSessionKey": "agent:social:subagent:1c8b5fb7-a02d-4e51-8e26-febc26546703",
+    "14d5c86f-c62e-49c2-bc04-dea781e67f6c": {
+      "runId": "14d5c86f-c62e-49c2-bc04-dea781e67f6c",
+      "childSessionKey": "agent:nova:subagent:9cee4aa7-9d59-4eee-919c-938631f16ccc",
       "requesterSessionKey": "agent:pluto:main",
       "requesterOrigin": {
         "channel": "webchat"
       },
       "requesterDisplayKey": "agent:pluto:main",
-      "task": "Generate a demo slide deck using the slide-gen tool. Create a 5-slide PDF about \"OpenClaw Features\" with vibrant slides. Save the output to: AgentHr/slide-gen/demo-slides.pdf (create directory if needed). Use pdf-lib for generation. Work in main workspace. If dependencies are missing, install them first. Report success with absolute file path. Retry with 10 minute timeout.",
+      "task": "Fix CMD flicker on TUI launch: 1) Determine the exact command/shortway used to start the TUI. 2) Identify which run-node.mjs is executed. 3) Ensure that file's runOpenClaw spawn includes windowsHide: true; patch if missing. 4) Clean %TEMP%\\openclaw and any stale lock files. 5) Confirm the TUI command uses the runner (node scripts/run-node.mjs tui) and not openclaw.mjs directly. Report with file paths and patch diff. Do not use external tools that require user input; work autonomously.",
       "cleanup": "keep",
-      "label": "Slide Deck Generation (persistent)",
+      "label": "TUI Flicker Fix (Nova)",
       "model": "openrouter/stepfun/step-3.5-flash:free",
       "runTimeoutSeconds": 600,
-      "createdAt": 1771436365758,
-      "startedAt": 1771436366021,
-      "archiveAtMs": 1771439965758,
+      "createdAt": 1771476371790,
+      "startedAt": 1771476372219,
+      "archiveAtMs": 1771479971790,
       "cleanupHandled": true,
-      "endedAt": 1771436518416,
+      "endedAt": 1771476685891,
       "outcome": {
         "status": "ok"
       },
-      "cleanupCompletedAt": 1771436532307
+      "cleanupCompletedAt": 1771476697815
     },
-    "9095b54c-744e-4736-874c-21af0a569c64": {
-      "runId": "9095b54c-744e-4736-874c-21af0a569c64",
-      "childSessionKey": "agent:generalist:subagent:357cde2d-6d81-41e7-9954-539315adffb5",
+    "50fb81d9-c6fe-461a-bb68-66df984e3d7e": {
+      "runId": "50fb81d9-c6fe-461a-bb68-66df984e3d7e",
+      "childSessionKey": "agent:atlas:subagent:de2240a5-e4a7-4092-a054-2d1377898018",
       "requesterSessionKey": "agent:pluto:main",
       "requesterOrigin": {
         "channel": "webchat"
       },
       "requesterDisplayKey": "agent:pluto:main",
-      "task": "Investigate the 10-second black CMD window flicker on this Windows machine. The gateway is running as a service (OpenClawGateway) and stable, but a separate visible CMD window appears and disappears every ~10 seconds, likely launching something related to OpenClaw/gateway. Explore these angles:\n\n1. Check for any batch files or PowerShell scripts in common locations (Startup, Temp, user folders) that might call `openclaw gateway` or `gateway` on a loop\n2. Inspect Event Viewer (Windows Logs → Application/System) for events every 10 seconds mentioning `openclaw`, `gateway`, `cmd`, or `node`\n3. Look for any other Windows services besides OpenClawGateway that might be launching the gateway\n4. Check if there's a parent process repeatedly spawning child `cmd.exe` processes with `openclaw` in the command line\n5. Review common autorun locations: Registry Run keys (HKCU/HKLM), Startup folders (all users), and `C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup`\n6. Consider whether a developer tool or extension might be doing this (e.g., nodemon, a watcher)\n\nDocument findings with specific paths, process names, and recommended fix actions. Report back with a clear plan to eliminate the flicker.",
+      "task": "Investigate system-level causes of recurring CMD flicker: 1) Enumerate Windows services and scheduled tasks that reference OpenClaw, node, or gateway. 2) Stop and disable any that run OpenClaw repeatedly (especially if using gateway:watch or with OPENCLAW_FORCE_BUILD). 3) Check environment variables (OPENCLAW_FORCE_BUILD, OPENCLAW_WATCH_MODE) and clear if set globally. 4) Look for any auto-start entries (Startup folder, Run registry keys) that launch OpenClaw. 5) Report exact names/paths and actions taken. Do not require user interaction.",
       "cleanup": "keep",
-      "label": "Flicker Investigation (Generalist)",
+      "label": "System Persistence Cleanup (Atlas)",
       "model": "openrouter/stepfun/step-3.5-flash:free",
-      "runTimeoutSeconds": 0,
-      "createdAt": 1771439499228,
-      "startedAt": 1771439631350,
-      "archiveAtMs": 1771443099228,
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771476377212,
+      "startedAt": 1771476377497,
+      "archiveAtMs": 1771479977212,
+      "cleanupHandled": false
+    },
+    "9aad9baf-de01-4057-bbef-5877b7f17364": {
+      "runId": "9aad9baf-de01-4057-bbef-5877b7f17364",
+      "childSessionKey": "agent:nova:subagent:1c7b7f31-b6c6-4a8d-a371-186672519d8e",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "Implement Pluto's token-balanced model selection: 1) Add a pre-spawn hook that reads model_registry.md and llm_token_ledger.md, filters eligible models by Active=TRUE and Strength matching task type, then selects the least-used model (ascending total tokens). 2) Modify Pluto's agent spawn call to explicitly set the selected model. 3) Add a post-completion hook to capture session total tokens (input+output) and update the ledger (daily row + aggregates). 4) Handle month rollover (archive old ledger, create fresh). 5) Ensure file writes are atomic (temp write + rename). Provide code changes, file paths, and a quick integration guide. Focus on OpenClaw gateway codebase.",
+      "cleanup": "keep",
+      "label": "Model Selection Automation (Nova)",
+      "model": "openrouter/stepfun/step-3.5-flash:free",
+      "runTimeoutSeconds": 900,
+      "createdAt": 1771476815395,
+      "startedAt": 1771476815678,
+      "archiveAtMs": 1771480415395,
+      "cleanupHandled": false
+    },
+    "4c0e88e7-f275-4cce-807f-cc3146831b07": {
+      "runId": "4c0e88e7-f275-4cce-807f-cc3146831b07",
+      "childSessionKey": "agent:nova:subagent:60b3300e-be52-45bc-8e6f-b08d98e43f68",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "OpenClaw just crashed. Investigate immediately: 1) Check gateway logs in .openclaw-state/logs for error stack traces around the crash time. 2) Identify the process that crashed (gateway, TUI, or subagent). 3) Determine root cause (e.g., unhandled exception, resource exhaustion, plugin failure). 4) Propose a concrete fix with code/patch if applicable. Provide exact file paths and changes. Do not restart yet; wait for peer review.",
+      "cleanup": "keep",
+      "label": "Crash Investigation (Nova)",
+      "model": "openrouter/stepfun/step-3.5-flash:free",
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771477144152,
+      "startedAt": 1771477144611,
+      "archiveAtMs": 1771480744152,
       "cleanupHandled": true,
-      "endedAt": 1771439632687,
+      "endedAt": 1771477408229,
+      "outcome": {
+        "status": "ok"
+      },
+      "cleanupCompletedAt": 1771477465984
+    },
+    "a3795280-497b-47cc-9d65-b4018e92751e": {
+      "runId": "a3795280-497b-47cc-9d65-b4018e92751e",
+      "childSessionKey": "agent:atlas:subagent:54fd056d-546f-432b-b24e-6a0e176453bc",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "Peer-review the crash fix proposed by Nova. Perform independent validation: 1) Reproduce the crash conditions if possible (check logs, recent changes, resource usage). 2) Review Nova's proposed patch for correctness, side effects, and rollback safety. 3) Check system-level factors: disk space, memory, CPU load, database locks, port conflicts. 4) Verify no zombie processes or corrupted state. 5) Approve or reject the fix with rationale. If approving, include pre- and post-restart verification steps.",
+      "cleanup": "keep",
+      "label": "Crash Fix Peer Review (Atlas)",
+      "model": "openrouter/stepfun/step-3.5-flash:free",
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771477152030,
+      "startedAt": 1771477152329,
+      "archiveAtMs": 1771480752030,
+      "cleanupHandled": true,
+      "endedAt": 1771477697289,
+      "outcome": {
+        "status": "ok"
+      },
+      "cleanupCompletedAt": 1771477697483
+    },
+    "d34fd29e-61c2-45eb-ad02-75759b097ca9": {
+      "runId": "d34fd29e-61c2-45eb-ad02-75759b097ca9",
+      "childSessionKey": "agent:vega:subagent:f24b65b3-3704-4b15-9a19-e79054a781ff",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "Write a comprehensive technical architecture guide for OpenClaw and save it as a Markdown file on the user's desktop. Content must cover: 1) Folder structure (root layout, agent definitions, skills, gateway config, sessions, model config, service init) with explanations of what each contains and impact of changes. 2) Multi-agent system internals (agent definitions, spawning, session creation, memory storage, lifecycle, persistence). 3) Gateway architecture (what it does, connection, config location, tool injection, message routing, disconnection handling, step-by-step flow). 4) Skills system (where defined, registration, loading, adding/modifying skills with file paths and post-restart effects). 5) Service layer (startup entry point, session restoration, background processes, config file locations, boot-to-ready flow). 6) Manual modification guide (which files to edit for: changing agent behavior, adding an agent, modifying delegation logic, changing model selection, changing gateway behavior; include steps and required restarts). 7) End-to-end flow example with exact file handlers for each step. Use clear, developer-level language; include ASCII diagrams where helpful; be practical for code-level modifications. Determine the user's desktop path (common: C:\\Users\\mangs\\Desktop) and write the file as \"OpenClaw_Architecture_Guide.md\". Do not require user input; infer typical path or read environment variable if needed.",
+      "cleanup": "keep",
+      "label": "OpenClaw Architecture Guide",
+      "model": "openrouter/stepfun/step-3.5-flash:free",
+      "runTimeoutSeconds": 900,
+      "createdAt": 1771477360245,
+      "startedAt": 1771477360626,
+      "archiveAtMs": 1771480960245,
+      "cleanupHandled": true,
+      "endedAt": 1771477488395,
+      "outcome": {
+        "status": "ok"
+      },
+      "cleanupCompletedAt": 1771477697584
+    },
+    "c0f04164-2d0a-4092-a7dc-38a837877b84": {
+      "runId": "c0f04164-2d0a-4092-a7dc-38a837877b84",
+      "childSessionKey": "agent:vega:subagent:e54d1ba0-27a0-4f22-95bc-b603e6aa85ad",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "WhatsApp is not working now. Diagnose and fix: 1) Check plugin configuration in .openclaw-state/openclaw.json (plugins.entries.whatsapp.enabled). 2) Verify WhatsApp session pairing and connection status via gateway logs. 3) Ensure credentials/QR pairing are valid; if not, guide through re-pairing. 4) Check network/firewall issues (gateway port, WebSocket connectivity). 5) Apply necessary config changes or restart steps. Provide clear fix instructions and verification steps. Avoid changes that could trigger rebuilds or console flicker (do not touch run-node.mjs or watch mode).",
+      "cleanup": "keep",
+      "label": "WhatsApp Fix (Vega)",
+      "model": "openrouter/stepfun/step-3.5-flash:free",
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771477893688,
+      "startedAt": 1771477893969,
+      "archiveAtMs": 1771481493688,
+      "cleanupHandled": true,
+      "endedAt": 1771477997779,
+      "outcome": {
+        "status": "ok"
+      },
+      "cleanupCompletedAt": 1771478008881
+    },
+    "8cd8a09f-26f1-43ca-8ed5-d3823c6d7eef": {
+      "runId": "8cd8a09f-26f1-43ca-8ed5-d3823c6d7eef",
+      "childSessionKey": "agent:atlas:subagent:8e42507c-2206-43e4-90b8-5f667888377b",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "Peer-review the WhatsApp fix proposed by Vega. Validate: 1) Changes are limited to plugin config/credentials and do not affect gateway runner, watch mode, or rebuild logic. 2) No environment variables or scheduled tasks introduced that could trigger rebuild loops. 3) Verify that after applying the fix, the TUI flicker will not return (no new console windows, no watchdog restarts). 4) Check for resource leaks or port conflicts. Approve only if safe; otherwise request modifications.",
+      "cleanup": "keep",
+      "label": "WhatsApp Fix Peer Review (Atlas)",
+      "model": "openrouter/stepfun/step-3.5-flash:free",
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771477903077,
+      "startedAt": 1771477903333,
+      "archiveAtMs": 1771481503077,
+      "cleanupHandled": false
+    },
+    "59ab79cf-d9e0-4fee-8323-52dcfbe25c96": {
+      "runId": "59ab79cf-d9e0-4fee-8323-52dcfbe25c96",
+      "childSessionKey": "agent:nova:subagent:e27b5753-db02-46e4-a821-68941eb7abfb",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "Flicker returned and AGENTS.md was missing due to workspace template resolution bug. Investigate: 1) Confirm the exact cause of the flicker now (is watch mode active? is the gateway restarting repeatedly? check processes and logs). 2) Verify the user's patch to src/agents/workspace-templates.ts is correct and present in the source; if not, apply it properly. 3) Ensure no git conflicts remain in package.json build scripts. 4) Build the project (pnpm run build) to confirm dist compiles. 5) Propose a permanent fix that prevents template resolution errors and stops rebuild loops. Provide exact file paths and patches. Avoid introducing new flicker risks (no console windows, no watch mode).",
+      "cleanup": "keep",
+      "expectsCompletionMessage": true,
+      "label": "Flicker Recurrence & Template Fix (Nova)",
+      "model": "openrouter/arcee-ai/trinity-large-preview:free",
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771479331980,
+      "startedAt": 1771479332263,
+      "archiveAtMs": 1771482931980,
+      "cleanupHandled": false
+    },
+    "c9ddc4c9-5122-4094-b39b-082d42de350f": {
+      "runId": "c9ddc4c9-5122-4094-b39b-082d42de350f",
+      "childSessionKey": "agent:atlas:subagent:06155ab1-4383-4528-b518-94e0e64f0c7b",
+      "requesterSessionKey": "agent:pluto:main",
+      "requesterOrigin": {
+        "channel": "webchat"
+      },
+      "requesterDisplayKey": "agent:pluto:main",
+      "task": "Peer-review the fix proposed by Nova for the recurring flicker and AGENTS.md template resolution. Validate: 1) The patch to workspace-templates.ts correctly uses import.meta.url fallback and does not depend on cwd. 2) Build script in package.json is conflict-free and does not trigger unnecessary rebuilds. 3) No environment variables or scheduled tasks cause repeated gateway restarts. 4) After applying the fix, verify that TUI launch does not show CMD window (windowsHide is present in run-node.mjs's runOpenClaw spawn). 5) Check that no watch mode is enabled by default. Approve only if safe and permanent.",
+      "cleanup": "keep",
+      "expectsCompletionMessage": true,
+      "label": "Peer Review: Template Fix & Flicker Prevention (Atlas)",
+      "model": "openrouter/deepseek/deepseek-r1-0528:free",
+      "runTimeoutSeconds": 600,
+      "createdAt": 1771479340118,
+      "startedAt": 1771479340371,
+      "archiveAtMs": 1771482940118,
+      "cleanupHandled": true,
+      "endedAt": 1771479341022,
       "outcome": {
         "status": "error",
-        "error": "Connection error."
+        "error": "404 No endpoints found that support tool use. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection"
       },
-      "cleanupCompletedAt": 1771439632800
+      "cleanupCompletedAt": 1771479355402
     }
   }
 }

@@ -42,5 +42,5 @@ if (-not $listening) {
 
 if (-not $NoTui) {
   # Interactive CLI session.
-  & node openclaw.mjs tui
+  & node scripts/run-node.mjs tui
 }

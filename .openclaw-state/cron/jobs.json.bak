@@ -8,7 +8,7 @@
       "enabled": true,
       "notify": true,
       "createdAtMs": 1771414378360,
-      "updatedAtMs": 1771439489651,
+      "updatedAtMs": 1771479015135,
       "schedule": {
         "expr": "*/30 * * * *",
         "kind": "cron"
@@ -20,10 +20,10 @@
         "text": "[HEARTBEAT] Perform system health check and auto-stabilization:\nNote: Heartbeat firing implies gateway is running.\n1. Check for stale lock file at .openclaw-state/openclaw.lock; delete it if present.\n2. Verify all critical agents (pluto, coder, social, osint, generalist) are responsive; if any are stuck, restart them.\n3. Check all active subagent tasks: if any have been running longer than their ETA (or >30 minutes by default), report to user with task details. For incomplete tasks past reasonable time, prompt agent to complete or escalate if blocker.\n4. Report a brief summary of actions taken (or \"All systems stable\") to this chat.\nExecute quietly without asking questions. Do NOT use browser tools to probe the gateway — the gateway being alive is already confirmed by this heartbeat firing.\nEscalation: Only notify user for difficult blockers; otherwise take best decision to achieve goal."
       },
       "state": {
-        "nextRunAtMs": 1771441200000,
-        "lastRunAtMs": 1771439400026,
+        "nextRunAtMs": 1771480800000,
+        "lastRunAtMs": 1771479000021,
         "lastStatus": "ok",
-        "lastDurationMs": 89625,
+        "lastDurationMs": 15114,
         "consecutiveErrors": 0
       }
     },
@@ -47,34 +47,11 @@
         "text": "[SOCIAL CONTENT] Trigger social media content generation from folder: C:\\Users\\mangs\\Desktop\\Content Marketing\\automated_content"
       },
       "state": {
-        "nextRunAtMs": 1771471800000,
+        "nextRunAtMs": 1771504200000,
         "lastRunAtMs": 1771418131741,
         "lastStatus": "ok",
         "lastDurationMs": 155999,
         "consecutiveErrors": 0
-      }
-    },
-    {
-      "id": "5f801219-9894-4d26-b6f3-80293376da7b",
-      "agentId": "pluto",
-      "name": "Reminder: Sleep Resilience Service Install",
-      "enabled": true,
-      "notify": true,
-      "deleteAfterRun": true,
-      "createdAtMs": 1771421204387,
-      "updatedAtMs": 1771421204387,
-      "schedule": {
-        "kind": "at",
-        "at": "2026-02-19T03:30:00.000Z"
-      },
-      "sessionTarget": "main",
-      "wakeMode": "now",
-      "payload": {
-        "kind": "systemEvent",
-        "text": "[REMINDER] Today is the day to install the OpenClaw Windows service to fix sleep/wake flicker and ensure 24/7 uptime. Steps: 1) Install NSSM from https://nssm.cc/download. 2) Run PowerShell as Administrator and execute: .\\install-gateway-service.ps1 (in D:\\workspace\\appDev\\openclaw). 3) Verify service is running: Get-Service OpenClawGateway. 4) Test sleep/wake and WhatsApp reconnection. This addresses the 5-10 second restart loop. Refer to QUICKSTART.md and SERVICE_SETUP.md for details."
-      },
-      "state": {
-        "nextRunAtMs": 1771471800000
       }
     }
   ]

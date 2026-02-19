@@ -181,6 +181,7 @@ const runOpenClaw = async (deps) => {
     cwd: deps.cwd,
     env: deps.env,
     stdio: "inherit",
+    windowsHide: true,
   });
   const res = await new Promise((resolve) => {
     nodeProcess.on("exit", (exitCode, exitSignal) => {
@@ -238,6 +239,7 @@ export async function runNodeMain(params = {}) {
     cwd: deps.cwd,
     env: deps.env,
     stdio: "inherit",
+    windowsHide: true,
   });
 
   const buildRes = await new Promise((resolve) => {

@@ -31,8 +31,8 @@ export async function resolveWorkspaceTemplateDir(opts?: {
     const packageRoot = await resolveOpenClawPackageRoot({ moduleUrl, argv1, cwd });
     const candidates = [
       packageRoot ? path.join(packageRoot, "docs", "reference", "templates") : null,
-      cwd ? path.resolve(cwd, "docs", "reference", "templates") : null,
       FALLBACK_TEMPLATE_DIR,
+      cwd ? path.resolve(cwd, "docs", "reference", "templates") : null,
     ].filter(Boolean) as string[];
 
     for (const candidate of candidates) {
@@ -42,7 +42,7 @@ export async function resolveWorkspaceTemplateDir(opts?: {
       }
     }
 
-    cachedTemplateDir = candidates[0] ?? FALLBACK_TEMPLATE_DIR;
+    cachedTemplateDir = FALLBACK_TEMPLATE_DIR;
     return cachedTemplateDir;
   })();
 

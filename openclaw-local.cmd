@@ -17,4 +17,4 @@ if not exist "%OPENCLAW_CONFIG_PATH%" (
   )
 )
 
-node "%~dp0openclaw.mjs" %*
+node "%~dp0scripts\run-node.mjs" %*

@@ -162,23 +162,23 @@
         },
         "subagents": {
           "allowAgents": [
-            "coder",
-            "coder2",
-            "social",
-            "osint",
-            "generalist"
+            "nova",
+            "orion",
+            "vega",
+            "atlas",
+            "ares"
           ]
         }
       },
       {
-        "id": "coder",
-        "name": "Coder",
+        "id": "nova",
+        "name": "Nova",
         "workspace": "D:\\workspace\\appDev\\openclaw",
         "model": {
           "primary": "openrouter/arcee-ai/trinity-large-preview:free"
         },
         "identity": {
-          "emoji": "ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â»"
+          "emoji": "NO"
         },
         "subagents": {
           "allowAgents": [
@@ -187,36 +187,50 @@
         }
       },
       {
-        "id": "social",
-        "name": "Social Media",
+        "id": "vega",
+        "name": "Vega",
         "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-social",
         "model": {
           "primary": "openrouter/z-ai/glm-4.5-air:free"
         },
         "identity": {
-          "emoji": "ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â±"
+          "emoji": "VG"
         }
       },
       {
-        "id": "osint",
-        "name": "OSINT Analyst",
+        "id": "orion",
+        "name": "Orion",
         "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-osint",
         "model": {
-          "primary": "openrouter/openai/gpt-oss-120b:free"
+          "primary": "openrouter/qwen/qwen3-coder:free"
         },
         "identity": {
-          "emoji": "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â"
+          "emoji": "OR"
         }
       },
       {
-        "id": "generalist",
-        "name": "Generalist",
+        "id": "atlas",
+        "name": "Atlas",
         "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-generalist",
         "model": {
           "primary": "openrouter/deepseek/deepseek-r1-0528:free"
         },
         "identity": {
-          "emoji": "ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â°"
+          "emoji": "AT"
+        }
+      },
+      {
+        "id": "ares",
+        "name": "Ares",
+        "workspace": "D:\\workspace\\appDev\\openclaw\\.openclaw-state\\workspace",
+        "model": {
+          "primary": "openrouter/arcee-ai/trinity-large-preview:free"
+        },
+        "identity": {
+          "emoji": "AR"
+        },
+        "subagents": {
+          "allowAgents": []
         }
       }
     ]
@@ -323,7 +337,7 @@
     "enabled": true,
     "entries": {
       "whatsapp": {
-        "enabled": false
+        "enabled": true
       }
     }
   }
