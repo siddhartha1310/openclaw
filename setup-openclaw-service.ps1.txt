@@ -1,0 +1,129 @@
+# OpenClaw Gateway Service Installer
+# Run this as Administrator in PowerShell
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== OpenClaw Gateway Service Installer ===" -ForegroundColor Cyan
+
+# 1. Check for Go, install if missing
+Write-Host "`n[1/5] Checking Go installation..." -ForegroundColor Yellow
+$goPath = "C:\Program Files\Go\bin\go.exe"
+if (-not (Test-Path $goPath)) {
+    Write-Host "Go not found. Installing..." -ForegroundColor Yellow
+    $goUrl = "https://go.dev/dl/go1.24.4.windows-amd64.msi"
+    $goMsi = "$env:TEMP\go-installer.msi"
+    Invoke-WebRequest -Uri $goUrl -OutFile $goMsi -UseBasicParsing
+    Write-Host "Running Go installer (this takes a minute)..." -ForegroundColor Yellow
+    Start-Process msiexec.exe -Wait -ArgumentList "/i `"$goMsi`" /quiet /norestart"
+    # Refresh PATH
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    Write-Host "✅ Go installed" -ForegroundColor Green
+} else {
+    Write-Host "✅ Go already installed at $goPath" -ForegroundColor Green
+}
+
+# Verify go is available
+go version | Out-Null
+
+# 2. Build or locate openclaw.exe
+Write-Host "`n[2/5] Building OpenClaw binary..." -ForegroundColor Yellow
+$openclawDir = "D:\workspace\appDev\openclaw"
+if (-not (Test-Path $openclawDir)) {
+    Write-Error "OpenClaw directory not found at $openclawDir. Please verify the path."
+    exit 1
+}
+
+cd $openclawDir
+
+# Find main.go
+$mainGo = Get-ChildItem -Recurse -Filter "main.go" | Select-Object -First 1
+if (-not $mainGo) {
+    Write-Error "Could not find main.go in the repository. The repository may be incomplete."
+    exit 1
+}
+
+$mainDir = $mainGo.Directory.FullName
+Write-Host "Found main.go in: $mainDir"
+
+# Build
+go build -o "openclaw.exe" $mainDir
+if (-not (Test-Path "openclaw.exe")) {
+    Write-Error "Build failed. Check that Go dependencies are correct: go mod tidy"
+    exit 1
+}
+
+$openclawExe = Resolve-Path "openclaw.exe"
+Write-Host "✅ Built openclaw.exe at $openclawExe" -ForegroundColor Green
+
+# 3. Install NSSM if missing
+Write-Host "`n[3/5] Setting up NSSM (service manager)..." -ForegroundColor Yellow
+$nssmDir = "C:\nssm"
+$nssmExe = "$nssmDir\win64\nssm.exe"
+
+if (-not (Test-Path $nssmExe)) {
+    Write-Host "Downloading NSSM..." -ForegroundColor Yellow
+    $nssmUrl = "https://nssm.cc/release/nssm-2.24.zip"
+    $zipPath = "$env:TEMP\nssm-2.24.zip"
+    Invoke-WebRequest -Uri $nssmUrl -OutFile $zipPath -UseBasicParsing
+    
+    if (-not (Test-Path $nssmDir)) {
+        New-Item -ItemType Directory -Path $nssmDir | Out-Null
+    }
+    Expand-Archive -Path $zipPath -DestinationPath $nssmDir -Force
+    $nssmExe = Get-ChildItem $nssmDir -Recurse -Filter "nssm.exe" | Select-Object -First 1 | ForEach-Object { $_.FullName }
+    if (-not $nssmExe) {
+        # Try win64 specifically
+        $nssmExe = "$nssmDir\win64\nssm.exe"
+        if (-not (Test-Path $nssmExe)) {
+            Write-Error "Failed to locate nssm.exe after extraction."
+            exit 1
+        }
+    }
+    Write-Host "✅ NSSM installed to $nssmExe" -ForegroundColor Green
+} else {
+    Write-Host "✅ NSSM already present at $nssmExe" -ForegroundColor Green
+}
+
+# 4. Install Windows service
+Write-Host "`n[4/5] Installing OpenClawGateway service..." -ForegroundColor Yellow
+# Check if service already exists
+$serviceExists = Get-Service -Name "OpenClawGateway" -ErrorAction SilentlyContinue
+if ($serviceExists) {
+    Write-Host "Service already exists. Stopping and removing..." -ForegroundColor Yellow
+    Stop-Service -Name "OpenClawGateway" -Force -ErrorAction SilentlyContinue
+    & $nssmExe remove OpenClawGateway confirm
+}
+
+# Install service
+& $nssmExe install OpenClawGateway $openclawExe "gateway"
+
+# Configure service
+& $nssmExe set OpenClawGateway Start SERVICE_AUTO_START
+& $nssmExe set OpenClawGateway AppRestartDelay 5000
+& $nssmExe set OpenClawGateway AppExit 0 Restart
+& $nssmExe set OpenClawGateway AppExit 1 Restart
+& $nssmExe set OpenClawGateway AppExit 2 Restart
+& $nssmExe set OpenClawGateway AppExit 3 Restart
+& $nssmExe set OpenClawGateway AppDirectory $openclawDir
+
+Write-Host "✅ Service installed and configured" -ForegroundColor Green
+
+# 5. Start service and verify
+Write-Host "`n[5/5] Starting service..." -ForegroundColor Yellow
+Start-Service -Name "OpenClawGateway"
+
+$svc = Get-Service -Name "OpenClawGateway"
+if ($svc.Status -eq 'Running') {
+    Write-Host "`n🎉 SUCCESS! OpenClawGateway service is RUNNING" -ForegroundColor Green
+    Write-Host "Service startup type: $($svc.StartType)"
+    Write-Host "Control UI: http://localhost:18789"
+    Write-Host "`nCommands:" -ForegroundColor Cyan
+    Write-Host "  Get-Service OpenClawGateway   # Check status"
+    Write-Host "  Restart-Service OpenClawGateway  # Restart"
+    Write-Host "  Stop-Service OpenClawGateway   # Stop"
+} else {
+    Write-Host "`n⚠️ Service installed but status: $($svc.Status)" -ForegroundColor Yellow
+    Write-Host "Check logs: Get-Content C:\Users\mangs\.openclaw\logs\*.log -Tail 50"
+}
+
+Write-Host "`n=== Installation Complete ===" -ForegroundColor Cyan

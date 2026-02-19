@@ -1,0 +1,39 @@
+# OpenClaw Agents Configuration
+# This file defines all available agents in the system
+
+agents:
+  - id: coder
+    name: "Coder"
+    emoji: "👨‍💻"
+    workspace: "D:\workspace\appDev\openclaw\workspace-coder"
+    model: "arcee-ai/trinity-large-preview:free"
+    subagents:
+      allowAgents: ["pluto"]
+    description: "Primary coding assistant agent"
+
+  - id: coder2
+    name: "Coder 2"
+    emoji: "🤖"
+    workspace: "D:\workspace\appDev\openclaw\workspace-coder2"
+    model: "arcee-ai/trinity-large-preview:free"
+    subagents:
+      allowAgents: ["pluto"]
+    description: "Secondary coding assistant agent with same capabilities as Coder"
+    identity: "Specialized coding assistant with focus on clean code and best practices"
+
+  - id: pluto
+    name: "Pluto"
+    emoji: "🪐"
+    workspace: "D:\workspace\appDev\openclaw\workspace-pluto"
+    model: "openrouter/deepseek/deepseek-r1-0528:free"
+    subagents:
+      allowAgents: ["coder", "coder2"]
+    description: "Main orchestration agent"
+    role: "orchestrator"
+
+# Agent subagents permissions
+subagents:
+  allowAgents:
+    - pluto
+    - coder
+    - coder2

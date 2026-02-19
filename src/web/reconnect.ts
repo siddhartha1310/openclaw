@@ -10,7 +10,7 @@ export type ReconnectPolicy = BackoffPolicy & {
 
 export const DEFAULT_HEARTBEAT_SECONDS = 60;
 export const DEFAULT_RECONNECT_POLICY: ReconnectPolicy = {
-  initialMs: 2_000,
+  initialMs: 8_000,
   maxMs: 30_000,
   factor: 1.8,
   jitter: 0.25,

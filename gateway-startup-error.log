@@ -1,0 +1,9 @@
+[38;2;255;90;45m[1m
+ᾞ4 OpenClaw[m [38;2;255;138;91m2026.2.15 [38;2;139;127;119m(92ec3dd) — [38;2;209;74;34mTurning "I'll reply later" into "my bot replied instantly".[5;1H[?25h15:58:46 Gateway failed to start: gateway already running (pid 16492); lock timeout after 5000ms
+If the gateway is supervised, stop it with: openclaw gateway stop
+15:58:46 Port 18789 is already in use.
+15:58:46 - pid 16492: node.exe (127.0.0.1:18789)
+15:58:46 - Another process is listening on this port.
+15:58:46 Gateway service appears registered. Stop it first.
+[?2004l15:58:46 Tip: openclaw gateway stop
+15:58:46 Or: schtasks /End /TN "OpenClaw Gateway"

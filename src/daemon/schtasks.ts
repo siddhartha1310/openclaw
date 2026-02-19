@@ -159,7 +159,7 @@ function buildTaskScript({
     }
   }
   const command = programArguments.map(quoteCmdArg).join(" ");
-  lines.push(command);
+  lines.push(`${command} >> "%OPENCLAW_STATE_DIR%\\gateway.log" 2>&1`);
   return `${lines.join("\r\n")}\r\n`;
 }
 
@@ -287,6 +287,21 @@ export async function restartScheduledTask({
   await assertSchtasksAvailable();
   const taskName = resolveTaskName(env ?? (process.env as Record<string, string | undefined>));
   await execSchtasks(["/End", "/TN", taskName]);
+
+  // Wait for the task to actually stop (status != Running)
+  const startWait = Date.now();
+  while (Date.now() - startWait < 10000) {
+    const query = await execSchtasks(["/Query", "/TN", taskName, "/FO", "CSV", "/NH"]);
+    // CSV Output format: "\HostName","TaskName","Next Run Time","Status","Logon Mode","Last Run Time","Last Result","Author","Task To Run","Start In","Comment","Task State","Idle Time","Power Management","Run As User","Delete Task If Not Rescheduled","Stop Task If Runs X Hours","Schedule Type","Start Time","Start Date","End Date","Days","Months","Repeat: Every","Repeat: Until: Time","Repeat: Until: Duration","Repeat: Stop If Still Running"
+    // We just check if "Running" is present in the output line for simplicity, or if the query fails (task gone).
+    // A stopped task usually shows "Ready".
+    const output = (query.stdout || "").trim();
+    if (!output.includes('"Running"')) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
   const res = await execSchtasks(["/Run", "/TN", taskName]);
   if (res.code !== 0) {
     throw new Error(`schtasks run failed: ${res.stderr || res.stdout}`.trim());

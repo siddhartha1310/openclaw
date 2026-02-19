@@ -159,6 +159,8 @@ export async function createGatewayRuntimeState(params: {
   const wss = new WebSocketServer({
     noServer: true,
     maxPayload: MAX_PAYLOAD_BYTES,
+    pingInterval: 30000,
+    pingTimeout: 10000,
   });
   for (const server of httpServers) {
     attachGatewayUpgradeHandler({

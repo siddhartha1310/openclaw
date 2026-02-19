@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.2.15",
+    "lastTouchedAt": "2026-02-17T04:57:22.797Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-02-17T04:35:22.199Z",
+    "lastRunVersion": "2026.2.15",
+    "lastRunCommand": "onboard",
+    "lastRunMode": "local"
+  },
+  "logging": {
+    "level": "debug",
+    "consoleLevel": "debug"
+  },
+  "browser": {
+    "enabled": true,
+    "headless": true,
+    "defaultProfile": "openclaw"
+  },
+  "ui": {
+    "assistant": {
+      "name": "Pluto"
+    }
+  },
+  "auth": {
+    "profiles": {
+      "openrouter:default": {
+        "provider": "openrouter",
+        "mode": "api_key"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "stepfun/step-3.5-flash:free",
+            "name": "StepFun 3.5 Flash"
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openrouter/auto"
+      },
+      "models": {
+        "openrouter/auto": {
+          "alias": "OpenRouter"
+        }
+      },
+      "workspace": "C:\\Users\\mangs\\.openclaw\\workspace",
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "sandbox": {
+        "mode": "off",
+        "browser": {
+          "allowHostControl": true
+        }
+      }
+    },
+    "list": [
+      {
+        "id": "coder",
+        "name": "Coder",
+        "identity": {
+          "emoji": "💻"
+        }
+      },
+      {
+        "id": "social",
+        "name": "Social Media",
+        "identity": {
+          "emoji": "📱"
+        }
+      },
+      {
+        "id": "osint",
+        "name": "OSINT Analyst",
+        "identity": {
+          "emoji": "🔍"
+        }
+      },
+      {
+        "id": "generalist",
+        "name": "Generalist",
+        "identity": {
+          "emoji": "🧰"
+        }
+      }
+    ]
+  },
+  "tools": {
+    "profile": "full",
+    "web": {
+      "search": {
+        "enabled": true,
+        "provider": "brave",
+        "maxResults": 10,
+        "timeoutSeconds": 30
+      },
+      "fetch": {
+        "enabled": true,
+        "maxChars": 50000,
+        "timeoutSeconds": 45,
+        "maxRedirects": 5
+      }
+    },
+    "media": {
+      "image": {
+        "enabled": true,
+        "maxBytes": 5242880,
+        "maxChars": 2000,
+        "timeoutSeconds": 60
+      }
+    },
+    "message": {
+      "allowCrossContextSend": true,
+      "crossContext": {
+        "allowWithinProvider": true,
+        "allowAcrossProviders": false
+      }
+    },
+    "exec": {
+      "host": "gateway",
+      "security": "full",
+      "ask": "off",
+      "backgroundMs": 10000,
+      "timeoutSec": 300,
+      "applyPatch": {
+        "enabled": true,
+        "workspaceOnly": true
+      }
+    },
+    "fs": {
+      "workspaceOnly": false
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true
+  },
+  "channels": {
+    "whatsapp": {
+      "dmPolicy": "pairing",
+      "selfChatMode": true,
+      "groupPolicy": "allowlist",
+      "debounceMs": 0,
+      "mediaMaxMb": 50
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "controlUi": {
+      "allowInsecureAuth": true,
+      "dangerouslyDisableDeviceAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "token": "openclaw-token"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "entries": {
+      "whatsapp": {
+        "enabled": true
+      }
+    }
+  }
+}

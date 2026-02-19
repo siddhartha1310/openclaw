@@ -1,0 +1,1 @@
+Gateway restart completed successfully. No stale lock file found, no port conflicts detected, and gateway is running normally after restart.

@@ -344,7 +344,7 @@ export async function monitorWebChannel(
     ]);
 
     const uptimeMs = Date.now() - startedAt;
-    if (uptimeMs > heartbeatSeconds * 1000) {
+    if (uptimeMs > 30_000) {
       reconnectAttempts = 0; // Healthy stretch; reset the backoff.
     }
     status.reconnectAttempts = reconnectAttempts;

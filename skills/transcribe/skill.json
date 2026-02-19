@@ -1,0 +1,32 @@
+{
+  "name": "transcribe",
+  "version": "1.0.0",
+  "description": "Transcribe WhatsApp voice messages using local Whisper",
+  "main": "index.js",
+  "tools": {
+    "transcribe_audio": {
+      "name": "transcribe.transcribe_audio",
+      "description": "Transcribe an audio file to text using local Whisper",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "audio_path": {
+            "type": "string",
+            "description": "Path to the audio file (.ogg, .opus, .wav, .mp3, etc.)"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code for transcription (default: 'en')",
+            "default": "en"
+          },
+          "model": {
+            "type": "string",
+            "description": "Whisper model to use (default: 'tiny')",
+            "default": "tiny"
+          }
+        },
+        "required": ["audio_path"]
+      }
+    }
+  }
+}

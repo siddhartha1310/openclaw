@@ -50,7 +50,11 @@ export function restartGatewayProcessWithFreshPid(): GatewayRespawnResult {
     const child = spawn(process.execPath, args, {
       env: process.env,
       detached: true,
-      stdio: "inherit",
+      // Detached children should not inherit the current console handles.
+      // On Windows, inherited stdio can cause the respawned process to
+      // terminate when the parent exits during restart.
+      stdio: "ignore",
+      windowsHide: true,
     });
     child.unref();
     return { mode: "spawned", pid: child.pid ?? undefined };

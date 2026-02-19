@@ -1,0 +1,330 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.2.15",
+    "lastTouchedAt": "2026-02-18T17:20:18.651Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-02-17T04:35:22.199Z",
+    "lastRunVersion": "2026.2.15",
+    "lastRunCommand": "onboard",
+    "lastRunMode": "local"
+  },
+  "logging": {
+    "level": "trace",
+    "consoleLevel": "trace"
+  },
+  "browser": {
+    "enabled": true,
+    "headless": true,
+    "defaultProfile": "openclaw"
+  },
+  "ui": {
+    "assistant": {
+      "name": "Pluto"
+    }
+  },
+  "auth": {
+    "profiles": {
+      "openrouter:default": {
+        "provider": "openrouter",
+        "mode": "api_key"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "OPENROUTER_API_KEY",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "stepfun/step-3.5-flash:free",
+            "name": "StepFun 3.5 Flash",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "openrouter/arcee-ai/trinity-large-preview:free",
+            "name": "Arcee Trinity Large Preview",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "openrouter/deepseek/deepseek-r1-0528:free",
+            "name": "DeepSeek R1 0528",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "openrouter/z-ai/glm-4.5-air:free",
+            "name": "ZAI GLM 4.5 Air",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "openrouter/openai/gpt-oss-120b:free",
+            "name": "OpenAI GPT-OSS 120B",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openrouter/stepfun/step-3.5-flash:free"
+      },
+      "models": {
+        "openrouter/auto": {
+          "alias": "OpenRouter"
+        },
+        "openrouter/stepfun/step-3.5-flash:free": {},
+        "openrouter/arcee-ai/trinity-large-preview:free": {},
+        "openrouter/deepseek/deepseek-r1-0528:free": {},
+        "openrouter/z-ai/glm-4.5-air:free": {},
+        "openrouter/openai/gpt-oss-120b:free": {}
+      },
+      "workspace": "D:\\workspace\\appDev\\openclaw\\.openclaw-state\\workspace",
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "sandbox": {
+        "mode": "off",
+        "browser": {
+          "allowHostControl": true
+        }
+      }
+    },
+    "list": [
+      {
+        "id": "pluto",
+        "default": true,
+        "name": "Pluto",
+        "workspace": "D:\\\\workspace\\\\appDev\\\\openclaw\\\\.openclaw-state\\\\workspace",
+        "model": {
+          "primary": "openrouter/stepfun/step-3.5-flash:free"
+        },
+        "identity": {
+          "emoji": "PL"
+        },
+        "subagents": {
+          "allowAgents": [
+            "coder",
+            "coder2",
+            "social",
+            "osint",
+            "generalist"
+          ]
+        }
+      },
+      {
+        "id": "coder",
+        "name": "Coder",
+        "workspace": "D:\\workspace\\appDev\\openclaw",
+        "model": {
+          "primary": "openrouter/arcee-ai/trinity-large-preview:free"
+        },
+        "identity": {
+          "emoji": "ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â»"
+        },
+        "subagents": {
+          "allowAgents": [
+            "pluto"
+          ]
+        }
+      },
+      {
+        "id": "social",
+        "name": "Social Media",
+        "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-social",
+        "model": {
+          "primary": "openrouter/z-ai/glm-4.5-air:free"
+        },
+        "identity": {
+          "emoji": "ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â±"
+        }
+      },
+      {
+        "id": "osint",
+        "name": "OSINT Analyst",
+        "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-osint",
+        "model": {
+          "primary": "openrouter/openai/gpt-oss-120b:free"
+        },
+        "identity": {
+          "emoji": "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â"
+        }
+      },
+      {
+        "id": "generalist",
+        "name": "Generalist",
+        "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-generalist",
+        "model": {
+          "primary": "openrouter/deepseek/deepseek-r1-0528:free"
+        },
+        "identity": {
+          "emoji": "ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Â°"
+        }
+      }
+    ]
+  },
+  "tools": {
+    "profile": "full",
+    "web": {
+      "search": {
+        "enabled": true,
+        "provider": "brave",
+        "maxResults": 10,
+        "timeoutSeconds": 30
+      },
+      "fetch": {
+        "enabled": true,
+        "maxChars": 50000,
+        "timeoutSeconds": 45,
+        "maxRedirects": 5
+      }
+    },
+    "media": {
+      "image": {
+        "enabled": true,
+        "maxBytes": 5242880,
+        "maxChars": 2000,
+        "timeoutSeconds": 60
+      }
+    },
+    "sessions": {
+      "visibility": "all"
+    },
+    "message": {
+      "allowCrossContextSend": true,
+      "crossContext": {
+        "allowWithinProvider": true,
+        "allowAcrossProviders": false
+      }
+    },
+    "agentToAgent": {
+      "enabled": true
+    },
+    "exec": {
+      "host": "gateway",
+      "security": "full",
+      "ask": "off",
+      "backgroundMs": 10000,
+      "timeoutSec": 300,
+      "applyPatch": {
+        "enabled": true,
+        "workspaceOnly": true
+      }
+    },
+    "fs": {
+      "workspaceOnly": false
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true
+  },
+  "channels": {
+    "whatsapp": {
+      "dmPolicy": "pairing",
+      "selfChatMode": true,
+      "groupPolicy": "allowlist",
+      "debounceMs": 0,
+      "accounts": {
+        "default": {
+          "dmPolicy": "pairing",
+          "groupPolicy": "allowlist",
+          "debounceMs": 0,
+          "enabled": false
+        }
+      },
+      "mediaMaxMb": 50
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "controlUi": {
+      "allowInsecureAuth": true,
+      "dangerouslyDisableDeviceAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "token": "openclaw-token"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "skills": {
+    "entries": {
+      "transcribe": {
+        "enabled": true
+      }
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "entries": {
+      "whatsapp": {
+        "enabled": true
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "agentId": "pluto",
+  "name": "Pluto",
+  "emoji": "🪐",
+  "description": "Main orchestration agent",
+  "model": "openrouter/deepseek/deepseek-r1-0528:free",
+  "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-pluto",
+  "subagents": {
+    "allowAgents": ["coder", "coder2"]
+  },
+  "identity": {
+    "role": "orchestrator",
+    "specialties": ["coordination", "task_distribution", "workflow_management"],
+    "communication_style": "organizational"
+  },
+  "capabilities": {
+    "orchestration": true,
+    "subagent_management": true,
+    "task_routing": true
+  },
+  "permissions": {
+    "read_workspace": true,
+    "write_workspace": true,
+    "use_subagents": true,
+    "message_agents": ["coder", "coder2"]
+  },
+  "memory": {
+    "daily_logs": true,
+    "long_term_memory": "MEMORY.md"
+  }
+}

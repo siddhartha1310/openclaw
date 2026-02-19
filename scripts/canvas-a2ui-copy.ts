@@ -23,8 +23,9 @@ export async function copyA2uiAssets({ srcDir, outDir }: { srcDir: string; outDi
     }
     throw new Error(message, { cause: err });
   }
-  await fs.mkdir(path.dirname(outDir), { recursive: true });
-  await fs.cp(srcDir, outDir, { recursive: true });
+  await fs.mkdir(outDir, { recursive: true });
+  await fs.copyFile(path.join(srcDir, "index.html"), path.join(outDir, "index.html"));
+  await fs.copyFile(path.join(srcDir, "a2ui.bundle.js"), path.join(outDir, "a2ui.bundle.js"));
 }
 
 async function main() {

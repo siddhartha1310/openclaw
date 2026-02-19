@@ -1,0 +1,689 @@
+"use strict";Object.defineProperty(exports, "__esModule", { value: true });exports.C = normalizeHostname;exports.S = resolvePinnedHostnameWithPolicy;exports._ = void 0;exports.a = resizeToJpeg;exports.b = isBlockedHostname;exports.c = getFileExtension;exports.d = isGifMedia;exports.f = kindFromMime;exports.g = mediaKindFromMime;exports.h = maxBytesForKind;exports.i = optimizeImageToPng;exports.l = imageMimeFromFormat;exports.m = void 0;exports.n = getImageMetadata;exports.o = detectMime;exports.p = normalizeMimeType;exports.r = hasAlphaChannel;exports.s = extensionForMime;exports.t = convertHeicToJpeg;exports.u = isAudioFileName;exports.v = closeDispatcher;exports.x = isPrivateIpAddress;exports.y = createPinnedDispatcher;var _execEUUDM93d = require("./exec-eUUDM93d.js");
+var _nodePath = _interopRequireDefault(require("node:path"));
+var _nodeOs = _interopRequireDefault(require("node:os"));
+var _promises = _interopRequireDefault(require("node:fs/promises"));
+var _nodeDns = require("node:dns");
+var _promises2 = require("node:dns/promises");
+var _undici = require("undici");
+var _fileType = require("file-type");function _interopRequireDefault(e) {return e && e.__esModule ? e : { default: e };}function _interopRequireWildcard(e, t) {if ("function" == typeof WeakMap) var r = new WeakMap(),n = new WeakMap();return (_interopRequireWildcard = function (e, t) {if (!t && e && e.__esModule) return e;var o,i,f = { __proto__: null, default: e };if (null === e || "object" != typeof e && "function" != typeof e) return f;if (o = t ? n : r) {if (o.has(e)) return o.get(e);o.set(e, f);}for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]);return f;})(e, t);}
+
+//#region src/infra/net/hostname.ts
+function normalizeHostname(hostname) {
+  const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
+  if (normalized.startsWith("[") && normalized.endsWith("]")) return normalized.slice(1, -1);
+  return normalized;
+}
+
+//#endregion
+//#region src/infra/net/ssrf.ts
+var SsrFBlockedError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "SsrFBlockedError";
+  }
+};exports._ = SsrFBlockedError;
+const BLOCKED_HOSTNAMES = new Set(["localhost", "metadata.google.internal"]);
+function normalizeHostnameSet(values) {
+  if (!values || values.length === 0) return /* @__PURE__ */new Set();
+  return new Set(values.map((value) => normalizeHostname(value)).filter(Boolean));
+}
+function normalizeHostnameAllowlist(values) {
+  if (!values || values.length === 0) return [];
+  return Array.from(new Set(values.map((value) => normalizeHostname(value)).filter((value) => value !== "*" && value !== "*." && value.length > 0)));
+}
+function isHostnameAllowedByPattern(hostname, pattern) {
+  if (pattern.startsWith("*.")) {
+    const suffix = pattern.slice(2);
+    if (!suffix || hostname === suffix) return false;
+    return hostname.endsWith(`.${suffix}`);
+  }
+  return hostname === pattern;
+}
+function matchesHostnameAllowlist(hostname, allowlist) {
+  if (allowlist.length === 0) return true;
+  return allowlist.some((pattern) => isHostnameAllowedByPattern(hostname, pattern));
+}
+function parseIpv4(address) {
+  const parts = address.split(".");
+  if (parts.length !== 4) return null;
+  const numbers = parts.map((part) => Number.parseInt(part, 10));
+  if (numbers.some((value) => Number.isNaN(value) || value < 0 || value > 255)) return null;
+  return numbers;
+}
+function stripIpv6ZoneId(address) {
+  const index = address.indexOf("%");
+  return index >= 0 ? address.slice(0, index) : address;
+}
+function parseIpv6Hextets(address) {
+  let input = stripIpv6ZoneId(address.trim().toLowerCase());
+  if (!input) return null;
+  if (input.includes(".")) {
+    const lastColon = input.lastIndexOf(":");
+    if (lastColon < 0) return null;
+    const ipv4 = parseIpv4(input.slice(lastColon + 1));
+    if (!ipv4) return null;
+    const high = (ipv4[0] << 8) + ipv4[1];
+    const low = (ipv4[2] << 8) + ipv4[3];
+    input = `${input.slice(0, lastColon)}:${high.toString(16)}:${low.toString(16)}`;
+  }
+  const doubleColonParts = input.split("::");
+  if (doubleColonParts.length > 2) return null;
+  const headParts = doubleColonParts[0]?.length > 0 ? doubleColonParts[0].split(":").filter(Boolean) : [];
+  const tailParts = doubleColonParts.length === 2 && doubleColonParts[1]?.length > 0 ? doubleColonParts[1].split(":").filter(Boolean) : [];
+  const missingParts = 8 - headParts.length - tailParts.length;
+  if (missingParts < 0) return null;
+  const fullParts = doubleColonParts.length === 1 ? input.split(":") : [
+  ...headParts,
+  ...Array.from({ length: missingParts }, () => "0"),
+  ...tailParts];
+
+  if (fullParts.length !== 8) return null;
+  const hextets = [];
+  for (const part of fullParts) {
+    if (!part) return null;
+    const value = Number.parseInt(part, 16);
+    if (Number.isNaN(value) || value < 0 || value > 65535) return null;
+    hextets.push(value);
+  }
+  return hextets;
+}
+function extractIpv4FromEmbeddedIpv6(hextets) {
+  if (!(hextets[0] === 0 && hextets[1] === 0 && hextets[2] === 0 && hextets[3] === 0) || hextets[4] !== 0) return null;
+  if (hextets[5] !== 65535 && hextets[5] !== 0) return null;
+  const high = hextets[6];
+  const low = hextets[7];
+  return [
+  high >>> 8 & 255,
+  high & 255,
+  low >>> 8 & 255,
+  low & 255];
+
+}
+function isPrivateIpv4(parts) {
+  const [octet1, octet2] = parts;
+  if (octet1 === 0) return true;
+  if (octet1 === 10) return true;
+  if (octet1 === 127) return true;
+  if (octet1 === 169 && octet2 === 254) return true;
+  if (octet1 === 172 && octet2 >= 16 && octet2 <= 31) return true;
+  if (octet1 === 192 && octet2 === 168) return true;
+  if (octet1 === 100 && octet2 >= 64 && octet2 <= 127) return true;
+  return false;
+}
+function isPrivateIpAddress(address) {
+  let normalized = address.trim().toLowerCase();
+  if (normalized.startsWith("[") && normalized.endsWith("]")) normalized = normalized.slice(1, -1);
+  if (!normalized) return false;
+  if (normalized.includes(":")) {
+    const hextets = parseIpv6Hextets(normalized);
+    if (!hextets) return false;
+    const isUnspecified = hextets[0] === 0 && hextets[1] === 0 && hextets[2] === 0 && hextets[3] === 0 && hextets[4] === 0 && hextets[5] === 0 && hextets[6] === 0 && hextets[7] === 0;
+    const isLoopback = hextets[0] === 0 && hextets[1] === 0 && hextets[2] === 0 && hextets[3] === 0 && hextets[4] === 0 && hextets[5] === 0 && hextets[6] === 0 && hextets[7] === 1;
+    if (isUnspecified || isLoopback) return true;
+    const embeddedIpv4 = extractIpv4FromEmbeddedIpv6(hextets);
+    if (embeddedIpv4) return isPrivateIpv4(embeddedIpv4);
+    const first = hextets[0];
+    if ((first & 65472) === 65152) return true;
+    if ((first & 65472) === 65216) return true;
+    if ((first & 65024) === 64512) return true;
+    return false;
+  }
+  const ipv4 = parseIpv4(normalized);
+  if (!ipv4) return false;
+  return isPrivateIpv4(ipv4);
+}
+function isBlockedHostname(hostname) {
+  const normalized = normalizeHostname(hostname);
+  if (!normalized) return false;
+  if (BLOCKED_HOSTNAMES.has(normalized)) return true;
+  return normalized.endsWith(".localhost") || normalized.endsWith(".local") || normalized.endsWith(".internal");
+}
+function createPinnedLookup(params) {
+  const normalizedHost = normalizeHostname(params.hostname);
+  const fallback = params.fallback ?? _nodeDns.lookup;
+  const fallbackLookup = fallback;
+  const fallbackWithOptions = fallback;
+  const records = params.addresses.map((address) => ({
+    address,
+    family: address.includes(":") ? 6 : 4
+  }));
+  let index = 0;
+  return (host, options, callback) => {
+    const cb = typeof options === "function" ? options : callback;
+    if (!cb) return;
+    const normalized = normalizeHostname(host);
+    if (!normalized || normalized !== normalizedHost) {
+      if (typeof options === "function" || options === void 0) return fallbackLookup(host, cb);
+      return fallbackWithOptions(host, options, cb);
+    }
+    const opts = typeof options === "object" && options !== null ? options : {};
+    const requestedFamily = typeof options === "number" ? options : typeof opts.family === "number" ? opts.family : 0;
+    const candidates = requestedFamily === 4 || requestedFamily === 6 ? records.filter((entry) => entry.family === requestedFamily) : records;
+    const usable = candidates.length > 0 ? candidates : records;
+    if (opts.all) {
+      cb(null, usable);
+      return;
+    }
+    const chosen = usable[index % usable.length];
+    index += 1;
+    cb(null, chosen.address, chosen.family);
+  };
+}
+async function resolvePinnedHostnameWithPolicy(hostname, params = {}) {
+  const normalized = normalizeHostname(hostname);
+  if (!normalized) throw new Error("Invalid hostname");
+  const allowPrivateNetwork = Boolean(params.policy?.allowPrivateNetwork);
+  const allowedHostnames = normalizeHostnameSet(params.policy?.allowedHostnames);
+  const hostnameAllowlist = normalizeHostnameAllowlist(params.policy?.hostnameAllowlist);
+  const isExplicitAllowed = allowedHostnames.has(normalized);
+  if (!matchesHostnameAllowlist(normalized, hostnameAllowlist)) throw new SsrFBlockedError(`Blocked hostname (not in allowlist): ${hostname}`);
+  if (!allowPrivateNetwork && !isExplicitAllowed) {
+    if (isBlockedHostname(normalized)) throw new SsrFBlockedError(`Blocked hostname: ${hostname}`);
+    if (isPrivateIpAddress(normalized)) throw new SsrFBlockedError("Blocked: private/internal IP address");
+  }
+  const results = await (params.lookupFn ?? _promises2.lookup)(normalized, { all: true });
+  if (results.length === 0) throw new Error(`Unable to resolve hostname: ${hostname}`);
+  if (!allowPrivateNetwork && !isExplicitAllowed) {
+    for (const entry of results) if (isPrivateIpAddress(entry.address)) throw new SsrFBlockedError("Blocked: resolves to private/internal IP address");
+  }
+  const addresses = Array.from(new Set(results.map((entry) => entry.address)));
+  if (addresses.length === 0) throw new Error(`Unable to resolve hostname: ${hostname}`);
+  return {
+    hostname: normalized,
+    addresses,
+    lookup: createPinnedLookup({
+      hostname: normalized,
+      addresses
+    })
+  };
+}
+function createPinnedDispatcher(pinned) {
+  return new _undici.Agent({ connect: { lookup: pinned.lookup } });
+}
+async function closeDispatcher(dispatcher) {
+  if (!dispatcher) return;
+  const candidate = dispatcher;
+  try {
+    if (typeof candidate.close === "function") {
+      await candidate.close();
+      return;
+    }
+    if (typeof candidate.destroy === "function") candidate.destroy();
+  } catch {}
+}
+
+//#endregion
+//#region src/media/constants.ts
+const MAX_IMAGE_BYTES = exports.m = 6 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 16 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 16 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
+function mediaKindFromMime(mime) {
+  if (!mime) return "unknown";
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime.startsWith("video/")) return "video";
+  if (mime === "application/pdf") return "document";
+  if (mime.startsWith("text/")) return "document";
+  if (mime.startsWith("application/")) return "document";
+  return "unknown";
+}
+function maxBytesForKind(kind) {
+  switch (kind) {
+    case "image":return MAX_IMAGE_BYTES;
+    case "audio":return MAX_AUDIO_BYTES;
+    case "video":return MAX_VIDEO_BYTES;
+    case "document":return MAX_DOCUMENT_BYTES;
+    default:return MAX_DOCUMENT_BYTES;
+  }
+}
+
+//#endregion
+//#region src/media/mime.ts
+const EXT_BY_MIME = {
+  "image/heic": ".heic",
+  "image/heif": ".heif",
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+  "audio/ogg": ".ogg",
+  "audio/mpeg": ".mp3",
+  "audio/x-m4a": ".m4a",
+  "audio/mp4": ".m4a",
+  "video/mp4": ".mp4",
+  "video/quicktime": ".mov",
+  "application/pdf": ".pdf",
+  "application/json": ".json",
+  "application/zip": ".zip",
+  "application/gzip": ".gz",
+  "application/x-tar": ".tar",
+  "application/x-7z-compressed": ".7z",
+  "application/vnd.rar": ".rar",
+  "application/msword": ".doc",
+  "application/vnd.ms-excel": ".xls",
+  "application/vnd.ms-powerpoint": ".ppt",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+  "text/csv": ".csv",
+  "text/plain": ".txt",
+  "text/markdown": ".md"
+};
+const MIME_BY_EXT = {
+  ...Object.fromEntries(Object.entries(EXT_BY_MIME).map(([mime, ext]) => [ext, mime])),
+  ".jpeg": "image/jpeg"
+};
+const AUDIO_FILE_EXTENSIONS = new Set([
+".aac",
+".caf",
+".flac",
+".m4a",
+".mp3",
+".oga",
+".ogg",
+".opus",
+".wav"]
+);
+function normalizeMimeType(mime) {
+  if (!mime) return;
+  return mime.split(";")[0]?.trim().toLowerCase() || void 0;
+}
+async function sniffMime(buffer) {
+  if (!buffer) return;
+  try {
+    return (await (0, _fileType.fileTypeFromBuffer)(buffer))?.mime ?? void 0;
+  } catch {
+    return;
+  }
+}
+function getFileExtension(filePath) {
+  if (!filePath) return;
+  try {
+    if (/^https?:\/\//i.test(filePath)) {
+      const url = new URL(filePath);
+      return _nodePath.default.extname(url.pathname).toLowerCase() || void 0;
+    }
+  } catch {}
+  return _nodePath.default.extname(filePath).toLowerCase() || void 0;
+}
+function isAudioFileName(fileName) {
+  const ext = getFileExtension(fileName);
+  if (!ext) return false;
+  return AUDIO_FILE_EXTENSIONS.has(ext);
+}
+function detectMime(opts) {
+  return detectMimeImpl(opts);
+}
+function isGenericMime(mime) {
+  if (!mime) return true;
+  const m = mime.toLowerCase();
+  return m === "application/octet-stream" || m === "application/zip";
+}
+async function detectMimeImpl(opts) {
+  const ext = getFileExtension(opts.filePath);
+  const extMime = ext ? MIME_BY_EXT[ext] : void 0;
+  const headerMime = normalizeMimeType(opts.headerMime);
+  const sniffed = await sniffMime(opts.buffer);
+  if (sniffed && (!isGenericMime(sniffed) || !extMime)) return sniffed;
+  if (extMime) return extMime;
+  if (headerMime && !isGenericMime(headerMime)) return headerMime;
+  if (sniffed) return sniffed;
+  if (headerMime) return headerMime;
+}
+function extensionForMime(mime) {
+  const normalized = normalizeMimeType(mime);
+  if (!normalized) return;
+  return EXT_BY_MIME[normalized];
+}
+function isGifMedia(opts) {
+  if (opts.contentType?.toLowerCase() === "image/gif") return true;
+  return getFileExtension(opts.fileName) === ".gif";
+}
+function imageMimeFromFormat(format) {
+  if (!format) return;
+  switch (format.toLowerCase()) {
+    case "jpg":
+    case "jpeg":return "image/jpeg";
+    case "heic":return "image/heic";
+    case "heif":return "image/heif";
+    case "png":return "image/png";
+    case "webp":return "image/webp";
+    case "gif":return "image/gif";
+    default:return;
+  }
+}
+function kindFromMime(mime) {
+  return mediaKindFromMime(mime);
+}
+
+//#endregion
+//#region src/media/image-ops.ts
+function isBun() {
+  return typeof process.versions.bun === "string";
+}
+function prefersSips() {
+  return process.env.OPENCLAW_IMAGE_BACKEND === "sips" || process.env.OPENCLAW_IMAGE_BACKEND !== "sharp" && isBun() && process.platform === "darwin";
+}
+async function loadSharp() {
+  const mod = await Promise.resolve().then(() => jitiImport("sharp").then((m) => _interopRequireWildcard(m)));
+  const sharp = mod.default ?? mod;
+  return (buffer) => sharp(buffer, { failOnError: false });
+}
+/**
+* Reads EXIF orientation from JPEG buffer.
+* Returns orientation value 1-8, or null if not found/not JPEG.
+*
+* EXIF orientation values:
+* 1 = Normal, 2 = Flip H, 3 = Rotate 180, 4 = Flip V,
+* 5 = Rotate 270 CW + Flip H, 6 = Rotate 90 CW, 7 = Rotate 90 CW + Flip H, 8 = Rotate 270 CW
+*/
+function readJpegExifOrientation(buffer) {
+  if (buffer.length < 2 || buffer[0] !== 255 || buffer[1] !== 216) return null;
+  let offset = 2;
+  while (offset < buffer.length - 4) {
+    if (buffer[offset] !== 255) {
+      offset++;
+      continue;
+    }
+    const marker = buffer[offset + 1];
+    if (marker === 255) {
+      offset++;
+      continue;
+    }
+    if (marker === 225) {
+      const exifStart = offset + 4;
+      if (buffer.length > exifStart + 6 && buffer.toString("ascii", exifStart, exifStart + 4) === "Exif" && buffer[exifStart + 4] === 0 && buffer[exifStart + 5] === 0) {
+        const tiffStart = exifStart + 6;
+        if (buffer.length < tiffStart + 8) return null;
+        const isLittleEndian = buffer.toString("ascii", tiffStart, tiffStart + 2) === "II";
+        const readU16 = (pos) => isLittleEndian ? buffer.readUInt16LE(pos) : buffer.readUInt16BE(pos);
+        const readU32 = (pos) => isLittleEndian ? buffer.readUInt32LE(pos) : buffer.readUInt32BE(pos);
+        const ifd0Start = tiffStart + readU32(tiffStart + 4);
+        if (buffer.length < ifd0Start + 2) return null;
+        const numEntries = readU16(ifd0Start);
+        for (let i = 0; i < numEntries; i++) {
+          const entryOffset = ifd0Start + 2 + i * 12;
+          if (buffer.length < entryOffset + 12) break;
+          if (readU16(entryOffset) === 274) {
+            const value = readU16(entryOffset + 8);
+            return value >= 1 && value <= 8 ? value : null;
+          }
+        }
+      }
+      return null;
+    }
+    if (marker >= 224 && marker <= 239) {
+      const segmentLength = buffer.readUInt16BE(offset + 2);
+      offset += 2 + segmentLength;
+      continue;
+    }
+    if (marker === 192 || marker === 218) break;
+    offset++;
+  }
+  return null;
+}
+async function withTempDir(fn) {
+  const dir = await _promises.default.mkdtemp(_nodePath.default.join(_nodeOs.default.tmpdir(), "openclaw-img-"));
+  try {
+    return await fn(dir);
+  } finally {
+    await _promises.default.rm(dir, {
+      recursive: true,
+      force: true
+    }).catch(() => {});
+  }
+}
+async function sipsMetadataFromBuffer(buffer) {
+  return await withTempDir(async (dir) => {
+    const input = _nodePath.default.join(dir, "in.img");
+    await _promises.default.writeFile(input, buffer);
+    const { stdout } = await (0, _execEUUDM93d.n)("/usr/bin/sips", [
+    "-g",
+    "pixelWidth",
+    "-g",
+    "pixelHeight",
+    input],
+    {
+      timeoutMs: 1e4,
+      maxBuffer: 512 * 1024
+    });
+    const w = stdout.match(/pixelWidth:\s*([0-9]+)/);
+    const h = stdout.match(/pixelHeight:\s*([0-9]+)/);
+    if (!w?.[1] || !h?.[1]) return null;
+    const width = Number.parseInt(w[1], 10);
+    const height = Number.parseInt(h[1], 10);
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+    if (width <= 0 || height <= 0) return null;
+    return {
+      width,
+      height
+    };
+  });
+}
+async function sipsResizeToJpeg(params) {
+  return await withTempDir(async (dir) => {
+    const input = _nodePath.default.join(dir, "in.img");
+    const output = _nodePath.default.join(dir, "out.jpg");
+    await _promises.default.writeFile(input, params.buffer);
+    await (0, _execEUUDM93d.n)("/usr/bin/sips", [
+    "-Z",
+    String(Math.max(1, Math.round(params.maxSide))),
+    "-s",
+    "format",
+    "jpeg",
+    "-s",
+    "formatOptions",
+    String(Math.max(1, Math.min(100, Math.round(params.quality)))),
+    input,
+    "--out",
+    output],
+    {
+      timeoutMs: 2e4,
+      maxBuffer: 1024 * 1024
+    });
+    return await _promises.default.readFile(output);
+  });
+}
+async function sipsConvertToJpeg(buffer) {
+  return await withTempDir(async (dir) => {
+    const input = _nodePath.default.join(dir, "in.heic");
+    const output = _nodePath.default.join(dir, "out.jpg");
+    await _promises.default.writeFile(input, buffer);
+    await (0, _execEUUDM93d.n)("/usr/bin/sips", [
+    "-s",
+    "format",
+    "jpeg",
+    input,
+    "--out",
+    output],
+    {
+      timeoutMs: 2e4,
+      maxBuffer: 1024 * 1024
+    });
+    return await _promises.default.readFile(output);
+  });
+}
+async function getImageMetadata(buffer) {
+  if (prefersSips()) return await sipsMetadataFromBuffer(buffer).catch(() => null);
+  try {
+    const meta = await (await loadSharp())(buffer).metadata();
+    const width = Number(meta.width ?? 0);
+    const height = Number(meta.height ?? 0);
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+    if (width <= 0 || height <= 0) return null;
+    return {
+      width,
+      height
+    };
+  } catch {
+    return null;
+  }
+}
+/**
+* Applies rotation/flip to image buffer using sips based on EXIF orientation.
+*/
+async function sipsApplyOrientation(buffer, orientation) {
+  const ops = [];
+  switch (orientation) {
+    case 2:
+      ops.push("-f", "horizontal");
+      break;
+    case 3:
+      ops.push("-r", "180");
+      break;
+    case 4:
+      ops.push("-f", "vertical");
+      break;
+    case 5:
+      ops.push("-r", "270", "-f", "horizontal");
+      break;
+    case 6:
+      ops.push("-r", "90");
+      break;
+    case 7:
+      ops.push("-r", "90", "-f", "horizontal");
+      break;
+    case 8:
+      ops.push("-r", "270");
+      break;
+    default:return buffer;
+  }
+  return await withTempDir(async (dir) => {
+    const input = _nodePath.default.join(dir, "in.jpg");
+    const output = _nodePath.default.join(dir, "out.jpg");
+    await _promises.default.writeFile(input, buffer);
+    await (0, _execEUUDM93d.n)("/usr/bin/sips", [
+    ...ops,
+    input,
+    "--out",
+    output],
+    {
+      timeoutMs: 2e4,
+      maxBuffer: 1024 * 1024
+    });
+    return await _promises.default.readFile(output);
+  });
+}
+async function resizeToJpeg(params) {
+  if (prefersSips()) {
+    const normalized = await normalizeExifOrientationSips(params.buffer);
+    if (params.withoutEnlargement !== false) {
+      const meta = await getImageMetadata(normalized);
+      if (meta) {
+        const maxDim = Math.max(meta.width, meta.height);
+        if (maxDim > 0 && maxDim <= params.maxSide) return await sipsResizeToJpeg({
+          buffer: normalized,
+          maxSide: maxDim,
+          quality: params.quality
+        });
+      }
+    }
+    return await sipsResizeToJpeg({
+      buffer: normalized,
+      maxSide: params.maxSide,
+      quality: params.quality
+    });
+  }
+  return await (await loadSharp())(params.buffer).rotate().resize({
+    width: params.maxSide,
+    height: params.maxSide,
+    fit: "inside",
+    withoutEnlargement: params.withoutEnlargement !== false
+  }).jpeg({
+    quality: params.quality,
+    mozjpeg: true
+  }).toBuffer();
+}
+async function convertHeicToJpeg(buffer) {
+  if (prefersSips()) return await sipsConvertToJpeg(buffer);
+  return await (await loadSharp())(buffer).jpeg({
+    quality: 90,
+    mozjpeg: true
+  }).toBuffer();
+}
+/**
+* Checks if an image has an alpha channel (transparency).
+* Returns true if the image has alpha, false otherwise.
+*/
+async function hasAlphaChannel(buffer) {
+  try {
+    const meta = await (await loadSharp())(buffer).metadata();
+    return meta.hasAlpha || meta.channels === 4;
+  } catch {
+    return false;
+  }
+}
+/**
+* Resizes an image to PNG format, preserving alpha channel (transparency).
+* Falls back to sharp only (no sips fallback for PNG with alpha).
+*/
+async function resizeToPng(params) {
+  const sharp = await loadSharp();
+  const compressionLevel = params.compressionLevel ?? 6;
+  return await sharp(params.buffer).rotate().resize({
+    width: params.maxSide,
+    height: params.maxSide,
+    fit: "inside",
+    withoutEnlargement: params.withoutEnlargement !== false
+  }).png({ compressionLevel }).toBuffer();
+}
+async function optimizeImageToPng(buffer, maxBytes) {
+  const sides = [
+  2048,
+  1536,
+  1280,
+  1024,
+  800];
+
+  const compressionLevels = [
+  6,
+  7,
+  8,
+  9];
+
+  let smallest = null;
+  for (const side of sides) for (const compressionLevel of compressionLevels) try {
+    const out = await resizeToPng({
+      buffer,
+      maxSide: side,
+      compressionLevel,
+      withoutEnlargement: true
+    });
+    const size = out.length;
+    if (!smallest || size < smallest.size) smallest = {
+      buffer: out,
+      size,
+      resizeSide: side,
+      compressionLevel
+    };
+    if (size <= maxBytes) return {
+      buffer: out,
+      optimizedSize: size,
+      resizeSide: side,
+      compressionLevel
+    };
+  } catch {}
+  if (smallest) return {
+    buffer: smallest.buffer,
+    optimizedSize: smallest.size,
+    resizeSide: smallest.resizeSide,
+    compressionLevel: smallest.compressionLevel
+  };
+  throw new Error("Failed to optimize PNG image");
+}
+/**
+* Internal sips-only EXIF normalization (no sharp fallback).
+* Used by resizeToJpeg to normalize before sips resize.
+*/
+async function normalizeExifOrientationSips(buffer) {
+  try {
+    const orientation = readJpegExifOrientation(buffer);
+    if (!orientation || orientation === 1) return buffer;
+    return await sipsApplyOrientation(buffer, orientation);
+  } catch {
+    return buffer;
+  }
+}
+
+//#endregion /* v9-5a0af50518430514 */

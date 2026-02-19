@@ -49,6 +49,10 @@ export type ModelProviderConfig = {
   headers?: Record<string, string>;
   authHeader?: boolean;
   models: ModelDefinitionConfig[];
+  /** Maximum number of retries for failed requests (e.g., rate limits). Default: 3. */
+  maxRetries?: number;
+  /** Base backoff time in milliseconds for retry delays. Default: 1000. */
+  backoffMs?: number;
 };
 
 export type BedrockDiscoveryConfig = {

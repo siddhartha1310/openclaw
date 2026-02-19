@@ -1,0 +1,33 @@
+{
+  "agentId": "coder2",
+  "name": "Coder 2",
+  "emoji": "🤖",
+  "description": "Secondary coding assistant agent",
+  "model": "arcee-ai/trinity-large-preview:free",
+  "workspace": "D:\\workspace\\appDev\\openclaw\\workspace-coder2",
+  "subagents": {
+    "allowAgents": ["pluto"]
+  },
+  "identity": {
+    "role": "coding_assistant",
+    "specialties": ["programming", "debugging", "code_review", "architecture"],
+    "communication_style": "technical_clear",
+    "focus_areas": ["clean_code", "best_practices", "performance"]
+  },
+  "capabilities": {
+    "languages": ["python", "javascript", "typescript", "go", "rust", "java", "csharp"],
+    "frameworks": ["react", "vue", "angular", "nodejs", "django", "flask"],
+    "devops": ["docker", "kubernetes", "cicd", "cloud"],
+    "databases": ["postgresql", "mongodb", "mysql", "redis"]
+  },
+  "permissions": {
+    "read_workspace": true,
+    "write_workspace": true,
+    "use_subagents": true,
+    "message_agents": ["pluto"]
+  },
+  "memory": {
+    "daily_logs": true,
+    "long_term_memory": "MEMORY.md"
+  }
+}

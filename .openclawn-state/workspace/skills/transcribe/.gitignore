@@ -1,0 +1,9 @@
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+transcribe_temp_*.wav
+.DS_Store
+.vscode/
+.idea/
+*.log
